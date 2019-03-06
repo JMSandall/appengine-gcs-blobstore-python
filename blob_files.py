@@ -43,14 +43,8 @@ class BlobFiles(ndb.Model):
             BlobFiles entity, if the new gcs_filename is not equal to the existing gcs path
             use_blobstore controls the type of serving_url. True: use Blobkey; False: use gcs_filename
         """
-
         gcs_filename = '/%s%s/%s' % (bucket or app_identity.get_default_gcs_bucket_name(), folder, filename)
-        bf = cls.get_by_id(filename)
-        if bf and gcs_filename != bf.gcs_filename:
-            logging.error('new gcs_filename: %s already exists as gcs_filename: %s' % (gcs_filename,  bf.gcs_filename))
-            return None
-
-        return BlobFiles(id=filename, filename=filename, folder=folder, gcs_filename=gcs_filename)
+        return BlobFiles(id=gcs_filename, filename=filename, folder=folder, gcs_filename=gcs_filename)
 
     def properties(self):
 
@@ -140,6 +134,8 @@ def blob_archive(new_bf=None):
         """
 
         for bf in BlobFiles.query().filter(BlobFiles.key != archive_key).map(callback, keys_only=True):
+            if not bf:
+                continue
             if insert and new_bf.key == bf.key:
                 insert = False  # no index inconsistency
             yield bf

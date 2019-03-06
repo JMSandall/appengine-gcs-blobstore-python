@@ -11,32 +11,50 @@ The code always uses the Images get_serving_url for images (gif/png/jpg).
 This image serving url allows dynamic resizing and cropping.  
 The use_blobstore option configures the serving_url type for non-images.  
 The use_blobstore default (= True) can be overwritten in appengine_config.py
-
-blob_upload contains the code to upload a file to cloudstorage:
+---
+blob_upload contains the code to upload files to cloudstorage:
 
     upload: https://<appid>.appspot.com/blob_upload
     or: http://localhost:8080/blob_upload
+    
+The directory structure will be maintained when uploading a folder. 
 
+E.g.
+
+```
+-bucket_dir
+    -subfolder_01
+        - image_01.jpg
+        - image_02.jpg
+```
+Uplading the `subfolder_01` directory will create two entries with the paths:
+
+```
+/bucket_dir/subfolder_01/image_01.jpg
+/bucket_dir/subfolder_01/image_02.jpg
+```
+
+---
 To serve the data, you can use in your Jinja HTML template:
 
     js:  <script type="text/javascript" src="{{ serving_url }}"></script>
     css: <link type="text/css" rel="stylesheet" href="{{ serving_url }}">
     pdf: <a href="{{ serving_url }}" target="_blank">Test PDF</a>
     img: <img  alt="{{ filename }}" src="{{ serving_url }}" />
-
+---
 In GAE production the serving url looks like:
 
     images: https://lhN.ggpht.com/NlCARAtN.........3NQW9ZxYpms=s698
     other:  https://storage.googleapis.com/default_bucket/file_name
     or a blobstore like url, when use_blobstore = True
-    
+
 And in the SDK:
 
     images: http://localhost:8080/_ah/img/encoded_gs_file:YXBwX2R......Y3Nz
     other:  https://localhost:8080/_ah/gcs/default_bucket/file_name
     or a blobstore like url, when use_blobstore = True
     Note: The SDK encoded_gs_file id = base64.urlsafe_b64encode(app_default_bucket/filename)
-
+---
 The benefits of use_blobstore = False (GCS host):
 
     - Cheaper and probably significantly faster. 
