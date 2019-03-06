@@ -11,7 +11,6 @@ import markdown
 import logging
 import os
 
-GCS_UPLOAD_FOLDER = '/upload'
 README = os.path.join(os.path.dirname(__file__), 'README.md')
 
 
@@ -57,34 +56,36 @@ class BlobUpload(BaseHandler):
     def post(self):
         """ upload the file. Result: show file and archive links """
 
-        context = dict(failed='No file data', use_blobstore=(True if self.request.get('use_blobstore') == 'T' else False))
+        context = dict(failed='No file data', use_blobstore=(True if self.request.get('use_blobstore') == 'T' else False), files=[])
 
         # read upload data, save it in GCS and a zip archive
-        file_data = self.request.get("file", default_value=None)
+        file_data = self.request.get_all("file", default_value=None)
         if file_data:
+            files = self.request.POST.getall('file')
+            for index, fi in enumerate(files):
 
-            filename = self.request.POST["file"].filename
-            bf = blob_files.BlobFiles.new(filename, folder=GCS_UPLOAD_FOLDER)
-            if bf:
-                bf.blob_write(file_data)
+                filename = fi.filename.replace(':', '/')  # Fixes an issue with Mac OS where
+                # slashes in the filename are parsed as colons
+                folder = '/' + filename[:filename.rfind('/')]
+                bf = blob_files.BlobFiles.new(filename.rsplit('/').pop(), folder=folder)
+                bf.blob_write(file_data[index])
                 bf.put_async()
                 logging.info('Uploaded and saved in default GCS bucket : ' + bf.gcs_filename)
 
-                # update zip archive. make sure this (new) bf will be archived
-                bzf = blob_files.blob_archive(new_bf=bf)
-
-                context.update(dict(failed=None, bzf_url=bzf.serving_url, bzf_name=bzf.filename,
-                                    bf_url=bf.serving_url, bf_name=bf.filename))
-            else:
-                context.update(dict(failed='Overwrite blocked. The GCS file already exists in another bucket and/or folder'))
+                context.update(
+                    dict(failed=None, files=context['files'] + [(bf.serving_url, bf.filename)]))
         else:
             logging.warning('No file data')
 
         self.render_template('blob_links.html', **context)
 
+
 routes = [
     webapp2.Route(r'/blob_upload', handler=BlobUpload),
     webapp2.Route(r'/readme', handler='blob_upload.BlobUpload:readme'),
     ('/use_blobstore/([^/]+)?', blob_serve.UseBlobstore),
+    webapp2.Route('/', webapp2.RedirectHandler, defaults={
+        '_uri': '/blob_upload'
+    }),
 ]
 app = ndb.toplevel(webapp2.WSGIApplication(routes=routes, debug=True))

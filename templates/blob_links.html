@@ -5,8 +5,9 @@
 {% else %}
 <p><b>Serving url</b> (download) :</p>
 <ul class="no-markers">
-    <li>Zip archive : <a href="{{ bzf_url }}">{{ bzf_name }}</a></li>
-    <li>File upload : <a href="{{ bf_url }}">{{ bf_name }}</a></li>
+    {% for bf_url, bf_name in files %}
+        <li>File upload : <a href="{{ bf_url }}">{{ bf_name }}</a></li>
+    {% endfor %}
 </ul>
 {% endif %}
 {%- endblock -%}
